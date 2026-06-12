@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Employee Management Portal - Manage employees efficiently">
+  <meta name="theme-color" content="#667eea">
+  <title>Employee Management Portal</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>👔</text></svg>">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <h1>👔 Employee Management Portal</h1>
+        <p>Manage your employees efficiently with AWS</p>
+        <div class="api-status" id="apiStatus">Connecting to API...</div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="view" title="View all employees">
+        <span class="tab-icon">📋</span>
+        <span class="tab-text">View Employees</span>
+      </button>
+      <button class="tab-btn" data-tab="add" title="Add new employee">
+        <span class="tab-icon">➕</span>
+        <span class="tab-text">Add Employee</span>
+      </button>
+      <button class="tab-btn" data-tab="search" title="Search employees">
+        <span class="tab-icon">🔍</span>
+        <span class="tab-text">Search</span>
+      </button>
+    </nav>
+
+    <!-- Tab Contents -->
+    <main class="main-content">
+      <!-- View Employees Tab -->
+      <section id="view" class="tab-content active">
+        <div class="section-header">
+          <h2>Employee List</h2>
+          <div class="stats-container">
+            <div class="stat-box">
+              <span class="stat-label">Total Employees</span>
+              <span class="stat-value" id="totalCount">0</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Status</span>
+              <span class="stat-value status-badge" id="statusBadge">Ready</span>
+            </div>
+          </div>
+        </div>
+        <div class="refresh-btn-container">
+          <button id="refreshBtn" class="btn btn-secondary" title="Refresh employee list">
+            🔄 Refresh
+          </button>
+        </div>
+        <div id="employeesList" class="employees-grid">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Loading employees...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Add Employee Tab -->
+      <section id="add" class="tab-content">
+        <div class="section-header">
+          <h2>Add New Employee</h2>
+          <p class="section-subtitle">Fill in all required fields to add a new employee</p>
+        </div>
+        
+        <form id="addForm" class="form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Full Name <span class="required">*</span></label>
+              <input 
+                type="text" 
+                id="name" 
+                name="name" 
+                required 
+                placeholder="John Doe"
+                autocomplete="name"
+              >
+              <span class="error-message" id="nameError"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email Address <span class="required">*</span></label>
+              <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                required 
+                placeholder="john@example.com"
+                autocomplete="email"
+              >
+              <span class="error-message" id="emailError"></span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="department">Department <span class="required">*</span></label>
+              <select id="department" name="department" required>
+                <option value="">-- Select Department --</option>
+                <option value="Engineering">🛠️ Engineering</option>
+                <option value="Sales">💼 Sales</option>
+                <option value="Marketing">📢 Marketing</option>
+                <option value="HR">👥 Human Resources</option>
+                <option value="Finance">💰 Finance</option>
+                <option value="Operations">⚙️ Operations</option>
+                <option value="Support">🤝 Support</option>
+              </select>
+              <span class="error-message" id="departmentError"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="position">Position <span class="required">*</span></label>
+              <input 
+                type="text" 
+                id="position" 
+                name="position" 
+                required 
+                placeholder="Senior Developer"
+                autocomplete="off"
+              >
+              <span class="error-message" id="positionError"></span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="salary">Salary (USD)</label>
+              <input 
+                type="number" 
+                id="salary" 
+                name="salary" 
+                placeholder="75000"
+                min="0"
+                step="1000"
+              >
+              <span class="error-message" id="salaryError"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="joinDate">Join Date</label>
+              <input 
+                type="date" 
+                id="joinDate" 
+                name="joinDate"
+              >
+              <span class="error-message" id="joinDateError"></span>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="addSubmitBtn">
+              ✓ Add Employee
+            </button>
+            <button type="reset" class="btn btn-secondary">
+              🔄 Clear Form
+            </button>
+          </div>
+          <div id="addMessage" class="message"></div>
+        </form>
+      </section>
+
+      <!-- Search Tab -->
+      <section id="search" class="tab-content">
+        <div class="section-header">
+          <h2>Search Employees</h2>
+          <p class="section-subtitle">Search by name, email, department, or position</p>
+        </div>
+        
+        <div class="search-container">
+          <div class="search-input-wrapper">
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Type to search..." 
+              class="search-input"
+              autocomplete="off"
+            >
+            <span class="search-icon">🔍</span>
+          </div>
+          <button id="searchBtn" class="btn btn-primary" title="Search employees">
+            Search
+          </button>
+          <button id="clearBtn" class="btn btn-secondary" title="Clear search">
+            Clear
+          </button>
+        </div>
+
+        <div id="searchResults" class="employees-grid" style="margin-top: 30px;">
+          <div class="info-box">
+            <p>👉 Enter search query above to find employees</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal hidden">
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="modalClose" title="Close modal">✕</button>
+      <h2>Edit Employee</h2>
+      
+      <form id="editForm" class="form">
+        <input type="hidden" id="editId">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editName">Full Name</label>
+            <input type="text" id="editName" required>
+            <span class="error-message" id="editNameError"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="editEmail">Email Address</label>
+            <input type="email" id="editEmail" required>
+            <span class="error-message" id="editEmailError"></span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editDepartment">Department</label>
+            <select id="editDepartment" required>
+              <option value="Engineering">🛠️ Engineering</option>
+              <option value="Sales">💼 Sales</option>
+              <option value="Marketing">📢 Marketing</option>
+              <option value="HR">👥 Human Resources</option>
+              <option value="Finance">💰 Finance</option>
+              <option value="Operations">⚙️ Operations</option>
+              <option value="Support">🤝 Support</option>
+            </select>
+            <span class="error-message" id="editDepartmentError"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="editPosition">Position</label>
+            <input type="text" id="editPosition" required>
+            <span class="error-message" id="editPositionError"></span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editSalary">Salary (USD)</label>
+            <input type="number" id="editSalary" min="0" step="1000">
+            <span class="error-message" id="editSalaryError"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="editJoinDate">Join Date</label>
+            <input type="date" id="editJoinDate">
+            <span class="error-message" id="editJoinDateError"></span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="editSubmitBtn">
+            ✓ Save Changes
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditModal()">
+            Cancel
+          </button>
+        </div>
+        <div id="editMessage" class="message"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal hidden">
+    <div class="modal-overlay" id="deleteModalOverlay"></div>
+    <div class="modal-content delete-confirmation">
+      <h2>⚠️ Confirm Delete</h2>
+      <p>Are you sure you want to delete this employee?</p>
+      <div class="employee-details-delete">
+        <p><strong>Name:</strong> <span id="deleteEmployeeName"></span></p>
+        <p><strong>Email:</strong> <span id="deleteEmployeeEmail"></span></p>
+      </div>
+      <p class="warning">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button id="confirmDelete" class="btn btn-danger">Delete Employee</button>
+        <button id="cancelDelete" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
