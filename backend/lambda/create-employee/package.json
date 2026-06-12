@@ -1,0 +1,10 @@
+{
+  "name": "create-employee",
+  "version": "1.0.0",
+  "description": "Lambda function to create employee",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1000.0",
+    "uuid": "^9.0.0"
+  }
+}

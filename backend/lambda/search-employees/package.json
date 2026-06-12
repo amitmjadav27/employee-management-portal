@@ -1,0 +1,9 @@
+{
+  "name": "search-employees",
+  "version": "1.0.0",
+  "description": "Lambda function to search employees",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1000.0"
+  }
+}

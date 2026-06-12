@@ -1,0 +1,9 @@
+{
+  "name": "update-employee",
+  "version": "1.0.0",
+  "description": "Lambda function to update employee",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1000.0"
+  }
+}

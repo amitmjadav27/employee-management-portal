@@ -1,0 +1,282 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2013-12-31
+Description: 'Employee Management Portal - Serverless Backend'
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Runtime: nodejs20.x
+    Tracing: Active
+    Environment:
+      Variables:
+        EMPLOYEES_TABLE: !Ref EmployeesTable
+        DYNAMODB_REGION: !Ref AWS::Region
+        LOG_LEVEL: INFO
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment
+
+Resources:
+  # DynamoDB Table
+  EmployeesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'Employees-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: EmployeeId
+          AttributeType: S
+        - AttributeName: Email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EmployeeId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: Email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: EmployeePortal
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt EmployeesTable.Arn
+                  - !Sub '${EmployeesTable.Arn}/index/*'
+
+  # API Gateway REST API
+  EmployeeAPI:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub 'EmployeeManagementAPI-${Environment}'
+      Description: REST API for Employee Management Portal
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # CORS Configuration
+  APIGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref EmployeeAPI
+      ParentId: !GetAtt EmployeeAPI.RootResourceId
+      PathPart: api
+
+  EmployeesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref EmployeeAPI
+      ParentId: !Ref APIGatewayResource
+      PathPart: employees
+
+  EmployeeIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref EmployeeAPI
+      ParentId: !Ref EmployeesResource
+      PathPart: '{id}'
+
+  SearchResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref EmployeeAPI
+      ParentId: !Ref EmployeesResource
+      PathPart: search
+
+  # Lambda Functions
+  CreateEmployeeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'employee-create-${Environment}'
+      CodeUri: lambda/create-employee/
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Create a new employee
+      Events:
+        PostEmployee:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EmployeeAPI
+            Path: /api/employees
+            Method: POST
+      Tags:
+        Environment: !Ref Environment
+
+  GetEmployeesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'employee-list-${Environment}'
+      CodeUri: lambda/get-employees/
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Get all employees
+      Events:
+        GetEmployees:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EmployeeAPI
+            Path: /api/employees
+            Method: GET
+      Tags:
+        Environment: !Ref Environment
+
+  GetEmployeeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'employee-get-${Environment}'
+      CodeUri: lambda/get-employee/
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Get single employee by ID
+      Events:
+        GetEmployee:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EmployeeAPI
+            Path: /api/employees/{id}
+            Method: GET
+      Tags:
+        Environment: !Ref Environment
+
+  UpdateEmployeeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'employee-update-${Environment}'
+      CodeUri: lambda/update-employee/
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Update employee details
+      Events:
+        UpdateEmployee:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EmployeeAPI
+            Path: /api/employees/{id}
+            Method: PUT
+      Tags:
+        Environment: !Ref Environment
+
+  DeleteEmployeeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'employee-delete-${Environment}'
+      CodeUri: lambda/delete-employee/
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Delete an employee
+      Events:
+        DeleteEmployee:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EmployeeAPI
+            Path: /api/employees/{id}
+            Method: DELETE
+      Tags:
+        Environment: !Ref Environment
+
+  SearchEmployeesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'employee-search-${Environment}'
+      CodeUri: lambda/search-employees/
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Search employees by query
+      Events:
+        SearchEmployees:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EmployeeAPI
+            Path: /api/employees/search
+            Method: GET
+      Tags:
+        Environment: !Ref Environment
+
+  # API Deployment
+  EmployeeAPIDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - CreateEmployeeFunction
+      - GetEmployeesFunction
+      - GetEmployeeFunction
+      - UpdateEmployeeFunction
+      - DeleteEmployeeFunction
+      - SearchEmployeesFunction
+    Properties:
+      RestApiId: !Ref EmployeeAPI
+      Description: !Sub 'Deployment for ${Environment} environment'
+
+  EmployeeAPIStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref EmployeeAPI
+      DeploymentId: !Ref EmployeeAPIDeployment
+      StageName: !Ref Environment
+      Description: !Sub '${Environment} Stage'
+      TracingEnabled: true
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          DataTraceEnabled: true
+          MetricsEnabled: true
+
+Outputs:
+  EmployeeAPIEndpoint:
+    Description: Employee Management API Endpoint URL
+    Value: !Sub 'https://${EmployeeAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub 'EmployeeAPI-${Environment}'
+
+  EmployeesTableName:
+    Description: DynamoDB Table Name
+    Value: !Ref EmployeesTable
+    Export:
+      Name: !Sub 'EmployeesTable-${Environment}'
+
+  EmployeesTableArn:
+    Description: DynamoDB Table ARN
+    Value: !GetAtt EmployeesTable.Arn
+    Export:
+      Name: !Sub 'EmployeesTableArn-${Environment}'
